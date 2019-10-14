@@ -1,0 +1,12 @@
+# Created by .ignore support plugin (hsz.mobi)
+.idea/
+.vscode/
+__pycache__/
+checkpoint/
+data/
+embedding/
+origin_data/
+
+output
+data/renmin98/test
+test.py
