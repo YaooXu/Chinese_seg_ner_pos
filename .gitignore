@@ -10,3 +10,7 @@ origin_data/
 output
 data/renmin98/test
 test.py
+/icwb2-data/
+
+
+train_*

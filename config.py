@@ -10,15 +10,15 @@ def parse_args():
                         help='path to pre-trained embedding')
 
     parser.add_argument(
-        '--train_file', default='./data/renmin98/little_train', help='path to training file')
-
+        '--train_file', default='./data/little_renmin98/train', help='path to training file')
     parser.add_argument(
-        '--dev_ratio', type=float, default='0.2', help='the ratio of dev data in all data')
-
+        '--dev_file', default='./data/little_renmin98/dev', help='path to training file')
     parser.add_argument(
-        '--test_file', default='./data/renmin98/test', help='path to test file')
+        '--test_file', default='./data/little_renmin98/test', help='path to test file')
+    parser.add_argument('--rewrite', type=int, default=0,
+                        help='whether to rewrite gold file')
 
-    parser.add_argument('--gpu', type=int, default=0,
+    parser.add_argument('--gpu', type=int, default=3,
                         help='gpu id, set to -1 if use cpu mode')
     parser.add_argument('--batch_size', type=int,
                         default=32, help='batch size (10)')
@@ -26,7 +26,7 @@ def parse_args():
                         help='unknow-token in pre-trained embedding')
     parser.add_argument('--checkpoint_dir', default='./checkpoint/',
                         help='path to checkpoint prefix')
-    parser.add_argument('--hidden_size', type=int, default=100,
+    parser.add_argument('--hidden_size', type=int, default=128,
                         help='hidden dimension')
     parser.add_argument('--drop_out', type=float,
                         default=0.55, help='dropout ratio')
@@ -35,15 +35,13 @@ def parse_args():
     parser.add_argument('--start_epoch', type=int,
                         default=0, help='start epoch idx')
     parser.add_argument('--embedding_dim', type=int,
-                        default=100, help='dimension for word embedding')
+                        default=128, help='dimension for word embedding')
     parser.add_argument('--layers', type=int, default=1,
-                        help='number of lstm layers')
-    parser.add_argument('--lr', type=float, default=0.015,
+                        help='number of LSTM layers')
+    parser.add_argument('--lr', type=float, default=0.05,
                         help='initial learning rate')
     parser.add_argument('--lr_decay', type=float, default=0.05,
                         help='decay ratio of learning rate')
-    parser.add_argument('--fine_tune', action='store_false',
-                        help='fine tune pre-trained embedding dictionary')
     parser.add_argument('--load_check_point', default='',
                         help='path of checkpoint')
     parser.add_argument('--load_opt', action='store_true',
@@ -58,8 +56,7 @@ def parse_args():
                         help='thresholds to replace rare words with <unk>')
     parser.add_argument('--patience', type=int, default=15,
                         help='patience for early stop')
-    parser.add_argument('--shrink_embedding', action='store_true',
-                        help='shrink the embedding dictionary to corpus (open this if pre-trained embedding dictionary is too large, but disable this may yield better results on external corpus)')
-
+    parser.add_argument('--large', default='True',
+                        help='whether to use large model')
     args = parser.parse_args()
     return args
