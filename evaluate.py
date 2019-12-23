@@ -106,7 +106,7 @@ def evaluate(model, dataset_loader, idx2feature, idx2label, device, log_file):
     return P, R, F1, ER
 
 
-def evaluate_with_perl(gold_file, predict_file, log, epoch, loss=None, dev=True):
+def evaluate_with_perl(gold_file, predict_file, log=None, epoch=0, loss=None, dev=True):
     r"""
     这个效率高
 
@@ -114,8 +114,8 @@ def evaluate_with_perl(gold_file, predict_file, log, epoch, loss=None, dev=True)
     :param predict_file:
     :return:
     """
-    perl_path = './icwb2-data/scripts/score'
-    word_list = './icwb2-data/gold/pku_training_words.utf8'
+    perl_path = r'/home/yxu/Seg_ner_pos/icwb2-data/scripts/score'
+    word_list = r'/home/yxu/Seg_ner_pos/icwb2-data/gold/pku_training_words.utf8'
     p = subprocess.Popen(['perl', perl_path, word_list, gold_file, predict_file], stdout=subprocess.PIPE)
     output = p.stdout.read()
     output = output.decode(encoding='utf8')
@@ -125,25 +125,29 @@ def evaluate_with_perl(gold_file, predict_file, log, epoch, loss=None, dev=True)
     dev_R, dev_P, dev_F1 = float(res[-8].split('\t')[-1]), float(res[-7].split('\t')[-1]), float(
         res[-6].split('\t')[-1])
 
-    with open(log, 'a') as f:
-        f.write('EPOCH : %d\n' % epoch)
+    if log is not None:
+        with open(log, 'a') as f:
+            f.write('EPOCH : %d\n' % epoch)
 
-        if dev:
-            f.write('Dev\n')
-        else:
-            f.write('Train\n')
+            if dev:
+                f.write('Dev\n')
+            else:
+                f.write('Train\n')
 
-        if loss is not None:
-            f.write('Epoch loss : %f\n' % loss)
+            if loss is not None:
+                f.write('Epoch loss : %f\n' % loss)
 
+            for j in res:
+                print(j)
+                f.write(j + '\n')
+    else:
         for j in res:
             print(j)
-            f.write(j + '\n')
 
     return dev_R, dev_P, dev_F1
 
 
-def predict_write(model, dataset_loader, idx2feature, idx2label, device, tmp_file='./tmp'):
+def predict_write(model, dataset_loader, idx2feature, idx2label, device, tmp_file='./tmp', origin_texts=None):
     r"""
     返回一个临时的预测文件
 
@@ -159,27 +163,38 @@ def predict_write(model, dataset_loader, idx2feature, idx2label, device, tmp_fil
     model.eval()
 
     with open(tmp_file, 'w') as f:
-        for _, batch in enumerate(itertools.chain.from_iterable(dataset_loader)):
+        for idx, batch in tqdm.tqdm(enumerate(itertools.chain.from_iterable(dataset_loader))):
             batch = tuple(t.to(device) for t in batch)
             features, labels, masks = batch
             features_v, labels_v, masks_v = features.transpose(0, 1), labels.transpose(0, 1), masks.transpose(0, 1)
             scores, predict_labels = model.predict(features_v, masks_v)
-            for j in range(labels.shape[0]):
+            batch_size = labels.shape[0]
+            # 原始文本内容，避免最终结果出现<unk>
+            if origin_texts:
+                origin_text = origin_texts[idx * batch_size:(idx + 1) * batch_size]
+
+            for j in range(batch_size):
+                if origin_texts:
+                    origin_line = origin_text[j]
+
                 feature, predict_label, mask = features[j], predict_labels[j], masks[j]
                 line = ''
-                length = predict_label.shape[0]
+                length = feature.shape[0]
                 for k in range(length):
-                    # # TODO:DEBUG
-                    # if k == 0:
-                    #     continue
                     if k + 1 == length or mask[k + 1].item() == 0:
-                        f.write(line + '\n')
                         break
                     else:
-                        if idx2label[predict_label[k].item()][0] in ('B', 'S') and k != 0:
-                            line += ' ' + idx2feature[feature[k].item()]
+                        if origin_texts:
+                            content = origin_line[k]
                         else:
-                            line += idx2feature[feature[k].item()]
+                            content = idx2feature[feature[k].item()]
+
+                        if idx2label[predict_label[k].item()][0] in ('B', 'S') and k != 0:
+                            line += ' ' + content
+                        else:
+                            line += content
+                f.write(line + '\n')
+
     return tmp_file
 
 
@@ -265,4 +280,4 @@ def evaluate_by_file(real_text_file, pred_text_file, prf_file, epoch):
     f.write('ERR RATE: %f\n' % (ER))
     f.write('====================================\n')
 
-    return F
+    return P, R, F

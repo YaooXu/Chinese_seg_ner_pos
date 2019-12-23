@@ -54,9 +54,9 @@ def parse_args():
                         default=5.0, help='grad clip at')
     parser.add_argument('--mini_count', type=float, default=5,
                         help='thresholds to replace rare words with <unk>')
-    parser.add_argument('--patience', type=int, default=15,
+    parser.add_argument('--patience', type=int, default=10,
                         help='patience for early stop')
-    parser.add_argument('--large', default='True',
+    parser.add_argument('--large', type=int, default=1,
                         help='whether to use large model')
     args = parser.parse_args()
     return args

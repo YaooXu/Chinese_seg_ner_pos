@@ -164,7 +164,7 @@ def calc_threshold_mean(features):
     return [lower_average, average, upper_average, max_len]
 
 
-def construct_bucket_mean(input_features, input_label, feature2idx, label2idx, Large=False):
+def construct_bucket_for_train(input_features, input_label, feature2idx, label2idx, Large=True):
     """
     Large: 默认为False, 即为BILSTM_CRF_L制作数据集
     """
@@ -172,9 +172,6 @@ def construct_bucket_mean(input_features, input_label, feature2idx, label2idx, L
 
     # encode and padding
     features = encode_safe(input_features, feature2idx, feature2idx[UNKOWN_label])
-
-    # # TODO:DEBUG
-    # features = list(map(lambda t: [feature2idx[START_label]] + list(t), features))
 
     labels = encode_lines(input_label, label2idx)
     if Large:
@@ -212,6 +209,48 @@ def construct_bucket_mean(input_features, input_label, feature2idx, label2idx, L
     bucket_dataset = [
         CRFDataset(torch.LongTensor(bucket[0]), torch.LongTensor(bucket[1]), torch.tensor(bucket[2], dtype=torch.bool))
         for bucket in buckets]
+
+    return bucket_dataset
+
+
+def construct_bucket_for_test(input_features, input_label, feature2idx, label2idx, Large=True):
+    """
+    Large: 默认为False, 即为BILSTM_CRF_L制作数据集
+    """
+    label_size = len(label2idx)
+
+    # encode and padding
+    features = encode_safe(input_features, feature2idx, feature2idx[UNKOWN_label])
+
+    labels = encode_lines(input_label, label2idx)
+    if Large:
+        # labels = list(map(lambda t: [label2idx[START_label]] + list(t), labels))
+        labels = list(map(lambda t: [label2idx[START_label]] + list(t) + [label2idx[PAD_label]], labels))
+    thresholds = calc_threshold_mean(features)
+
+    pad_feature = feature2idx[EOF_label]
+    pad_label = label2idx[PAD_label]
+
+    buckets = [[], [], []]
+    for feature, label in zip(features, labels):
+        cur_len = len(feature)
+        cur_len_1 = cur_len + 1
+        # 根据当前句子的长度选取不同的阈值
+        if Large:
+            buckets[0].append(feature + [pad_feature] * (cur_len_1 - cur_len))
+            buckets[1].append([label[ind] * label_size + label[ind + 1] for ind in range(0, cur_len)] + [
+                label[cur_len] * label_size + pad_label])
+            buckets[2].append([1] * cur_len_1)
+        else:
+            buckets[0].append(feature + [pad_feature] * (cur_len_1 - cur_len))
+            buckets[1].append(label + [pad_label] * (cur_len_1 - cur_len))
+            buckets[2].append([1] * cur_len + [0] *
+                              (cur_len_1 - cur_len))
+
+    # 注意mask只能是BoolTensor
+    bucket_dataset = [
+        CRFDataset(torch.LongTensor(buckets[0][idx]).reshape(1, -1), torch.LongTensor(buckets[1][idx]).reshape(1, -1),
+                   torch.tensor(buckets[2][idx], dtype=torch.bool).reshape(1, -1)) for idx in range(len(buckets[0]))]
 
     return bucket_dataset
 
